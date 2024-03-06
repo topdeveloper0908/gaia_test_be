@@ -17,6 +17,7 @@ const connection = mysql.createConnection({
   user: "root",
   password: "Practitioner@2024",
   database: "practitioner",
+  port: '/var/run/mysqld/mysqld.sock',
 });
 connection.connect((err) => {
   if (err) {
