@@ -15,8 +15,9 @@ const app = express();
 const connection = mysql.createConnection({
   host: "127.0.0.1",
   user: "root",
-  password: "",
+  password: "Practitioner@2024",
   database: "practitioner",
+  port: '/var/run/mysqld/mysqld.sock',
 });
 connection.connect((err) => {
   if (err) {
