@@ -13,9 +13,9 @@ const authenticateToken = require("./middleware/authenticateToken");
 var nodemailer = require("nodemailer");
 const app = express();
 const connection = mysql.createConnection({
-  host: "localhost",
+  host: "127.0.0.1",
   user: "root",
-  password: "password",
+  password: "",
   database: "practitioner",
 });
 connection.connect((err) => {
@@ -116,13 +116,13 @@ app.post("/api/new", (req, res) => {
         res.json("duplicated");
       } else {
         connection.query(
-          "INSERT INTO practitioner_list (firstname, lastname, specialty, imageURL, upload, tags, meetinglink, address, city, state, zipcode, country, email, phone, sex, profileLink, availability, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "INSERT INTO practitioner_list (firstname, lastname, specialty, imageURL, upload, tags, meetinglink, address, city, state, zipcode, country, email, phone, sex, profileLink, availability, type, hide) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
           [
             newData.firstname,
             newData.lastname,
             newData.specialty,
             newData.imageURL,
-            newData.uploaded,
+            newData.upload,
             newData.tags,
             newData.meetinglink,
             newData.address,
@@ -136,6 +136,7 @@ app.post("/api/new", (req, res) => {
             newData.profileLink,
             newData.availability,
             newData.type,
+            newData.hide
           ],
           (error, results, fields) => {
             if (error) throw error;
@@ -158,13 +159,13 @@ app.post("/api/admin_new", (req, res) => {
         res.json("duplicated");
       } else {
         connection.query(
-          "INSERT INTO practitioner_list (firstname, lastname, specialty, imageURL, upload, tags, meetinglink, address, city, state, zipcode, country, email, phone, sex, status, review, `rank`, profileLink, availability, type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "INSERT INTO practitioner_list (firstname, lastname, specialty, imageURL, upload, tags, meetinglink, address, city, state, zipcode, country, email, phone, sex, status, review, `rank`, profileLink, availability, type, hide) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
           [
             newData.firstname,
             newData.lastname,
             newData.specialty,
             newData.imageURL,
-            newData.uploaded,
+            newData.upload,
             newData.tags,
             newData.meetinglink,
             newData.address,
@@ -181,6 +182,7 @@ app.post("/api/admin_new", (req, res) => {
             newData.profileLink,
             newData.availability,
             newData.type,
+            newData.hide
           ],
           (error, results, fields) => {
             if (error) throw error;
@@ -220,7 +222,7 @@ app.post("/api/update", (req, res) => {
     newData.availability,
     newData.type,
     newData.upload,
-    newData.id,
+    newData.id
   ]; // Replace with actual values
   connection.query(updateQuery, updateValues, (error, results, fields) => {
     if (error) throw error;
@@ -436,6 +438,101 @@ app.post("/api/hide_info", authenticateToken, (req, res) => {
     res.status(500).json({ message: "Internal server error." });
   }
 });
+
+// Customer
+app.post("/api/customer_new", authenticateToken, (req, res) => {
+  var newData = req.body;
+  const { userId } = req.user;
+  connection.query(
+    "Select * FROM customer_list WHERE email = ?",
+    [newData.email],
+    async (error, results, fields) => {
+      if (error) throw error;
+      if (results.length > 0) {
+        res.json("duplicated");
+      } else {
+        var cryptedPass = await bcrypt.hash(newData.password, 10)
+        connection.query(
+          "INSERT INTO customer_list (firstname, lastname, address, city, state, zipcode, country, email, phone, sex, password, practitioner ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          [
+            newData.firstname,
+            newData.lastname,
+            newData.address,
+            newData.city,
+            newData.state,
+            newData.zipcode,
+            newData.country,
+            newData.email,
+            newData.phone,
+            newData.sex,
+            cryptedPass,
+            userId
+          ],
+          (error, results, fields) => {
+            if (error) throw error;
+            console.log("Inserted a new row with ID:", results.insertId);
+            res.json("success");
+          }
+        );
+      }
+    }
+  );
+});
+app.post("/api/customer/remove", (req, res) => {
+  var newData = req.body;
+  // Update operation
+  connection.query(
+    "DELETE FROM customer_list WHERE id = ?",
+    [newData.id],
+    (error, results, fields) => {
+      if (error) throw error;
+      console.log("Deleted rows:", results.affectedRows);
+      res.json("success");
+    }
+  );
+});
+
+app.get("/api/user/customers", authenticateToken, (req, res) => {
+  const { userId } = req.user;
+  const query = "SELECT * FROM customer_list WHERE practitioner = ?;";
+  connection.query(query, [userId], async (error, results, fields) => {
+    if (error) throw error;
+
+    user = results;
+
+    res.json(user);
+  });
+  return;
+});
+app.post("/api/customer/update", async (req, res) => {
+  var newData = req.body;
+  
+  // Update operation
+  var cryptedPass = await bcrypt.hash(newData.password, 10)
+  const updateQuery =
+    "UPDATE customer_list SET firstname =?, lastname =?, address =?, city =?, zipcode =?, state =?, phone =?, email =?, country = ?, sex =?, password =?  WHERE id =?";
+  const updateValues = [
+    newData.firstname,
+    newData.lastname,
+    newData.address,
+    newData.city,
+    newData.zipcode,
+    newData.state,
+    newData.phone,
+    newData.email,
+    newData.country,
+    newData.sex,
+    cryptedPass,
+    newData.id
+  ]; // Replace with actual values
+
+  connection.query(updateQuery, updateValues, (error, results, fields) => {
+    if (error) throw error;
+    console.log("Updated rows:", results.affectedRows);
+    res.json("success");
+  });
+});
+
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, "src/");
