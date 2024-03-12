@@ -15,9 +15,10 @@ const app = express();
 const connection = mysql.createConnection({
   host: "127.0.0.1",
   user: "root",
-  password: "Practitioner@2024",
+  password: "",
+  // password: "Practitioner@2024",
   database: "practitioner",
-  port: '/var/run/mysqld/mysqld.sock',
+  // port: '/var/run/mysqld/mysqld.sock',
 });
 connection.connect((err) => {
   if (err) {
@@ -441,6 +442,84 @@ app.post("/api/hide_info", authenticateToken, (req, res) => {
 });
 
 // Customer
+app.post("/api/customer", async (req, res) => {
+  try {
+    var newData = req.body;
+    var data = [];
+
+    // Perform the database queries
+    const results1 = await new Promise((resolve, reject) => {
+      connection.query(
+        "select * FROM customer_list WHERE id = ?",
+        [newData.id],
+        (error, results, fields) => {
+          if (error) reject(error);
+          resolve(results);
+        }
+      );
+    });
+
+    const results2 = await new Promise((resolve, reject) => {
+      connection.query(
+        "select * FROM bio_data WHERE customer_id = ?",
+        [newData.id],
+        (error, results, fields) => {
+          if (error) reject(error);
+          resolve(results);
+        }
+      );
+    });
+
+    // Push results into the data array
+    data.push(results1);
+    data.push(results2);
+
+    // Send the response with the data
+    res.json(data);
+  } catch (error) {
+    // Handle errors here
+    console.error(error);
+    res.status(500).json({ error: "An error occurred" });
+  }
+});
+app.post("/api/customer/data/save", (req, res) => {
+  var newData = req.body;
+  connection.query(
+    "Select * FROM bio_data WHERE date = ? and customer_id = ?",
+    [newData.date, newData.customer_id],
+    (error, results, fields) => {
+      if (error) throw error;
+      if (results.length > 0) {
+        const updateQuery =
+          "UPDATE bio_data SET data =? WHERE date =? and customer_id=?";
+        const updateValues = [
+          newData.data,
+          newData.date, 
+          newData.customer_id
+        ]; // Replace with actual values
+        connection.query(updateQuery, updateValues, (error, results, fields) => {
+          if (error) throw error;
+          console.log("Updated rows:", results.affectedRows);
+          res.json(results.affectedRows);
+        });
+      } else {
+        connection.query(
+          "INSERT INTO bio_data (customer_id, date, data ) VALUES (?, ?, ?)",
+          [
+            newData.customer_id,
+            newData.date,
+            newData.data
+          ],
+          (error, results, fields) => {
+            if (error) throw error;
+            res.json(results.insertId);
+          }
+        );
+      }
+    }
+  );
+  // Update operation
+});
 app.post("/api/customer_new", authenticateToken, (req, res) => {
   var newData = req.body;
   const { userId } = req.user;
