@@ -551,7 +551,7 @@ app.post("/api/customer_new", authenticateToken, (req, res) => {
           (error, results, fields) => {
             if (error) throw error;
             console.log("Inserted a new row with ID:", results.insertId);
-            res.json("success");
+            res.json(results.insertId);
           }
         );
       }
