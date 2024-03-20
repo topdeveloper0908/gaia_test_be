@@ -12,6 +12,9 @@ const jwt = require("jsonwebtoken");
 const authenticateToken = require("./middleware/authenticateToken");
 var nodemailer = require("nodemailer");
 const app = express();
+const webdriver = require("selenium-webdriver");
+const axios = require('axios')
+
 const connection = mysql.createConnection({
   host: "127.0.0.1",
   user: "root",
@@ -445,40 +448,92 @@ app.post("/api/hide_info", authenticateToken, (req, res) => {
 app.post("/api/customer", async (req, res) => {
   try {
     var newData = req.body;
-    var data = [];
 
     // Perform the database queries
-    const results1 = await new Promise((resolve, reject) => {
-      connection.query(
-        "select * FROM customer_list WHERE id = ?",
-        [newData.id],
-        (error, results, fields) => {
-          if (error) reject(error);
-          resolve(results);
-        }
-      );
+    const query = "SELECT * FROM customer_list WHERE id = ?;";
+    connection.query(query, newData.id, async (error, results, fields) => {
+      if (error) throw error;
+      res.json(results);
     });
-
-    const results2 = await new Promise((resolve, reject) => {
-      connection.query(
-        "select * FROM bio_data WHERE customer_id = ?",
-        [newData.id],
-        (error, results, fields) => {
-          if (error) reject(error);
-          resolve(results);
-        }
-      );
-    });
+    
+    // const results2 = await new Promise((resolve, reject) => {
+    //   connection.query(
+    //     "select * FROM bio_data WHERE customer_id = ?",
+    //     [newData.id],
+    //     (error, results, fields) => {
+    //       if (error) reject(error);
+    //       resolve(results);
+    //     }
+    //   );
+    // });
 
     // Push results into the data array
-    data.push(results1);
-    data.push(results2);
+    // data.push(results1);
+    // data.push(results2);
 
-    // Send the response with the data
-    res.json(data);
+    // if(results1.length > 0 && results1[0].h_email && results1[0].h_password && results1[0].h_key && results1[0].h_id) {
+
+    //   var code = '';
+    //   const driver = new webdriver.Builder().forBrowser("chrome").build();
+    //   // Instantiate a web browser page
+    //   await driver.navigate().to("https://heartcloud.com/oauth/authorize?response_type=code&client_id=gaia.t62stc3k899w2b4a3k5&scope=profile%20settings%20activity&state=i9z4d4315fFtoiuK7wP2b3A3b8npZv")
+    //   .then(() => driver.findElement(webdriver.By.id('email')).sendKeys(results1[0].h_email))
+    //   .then(() => driver.findElement(webdriver.By.id('password')).sendKeys(results1[0].h_password))
+    //   .then(() => driver.findElement(webdriver.By.className('allow-button')).click())
+    //   .then(() => driver.getCurrentUrl())
+    //   .then((url) => {
+    //     const urlString = url;
+    //     const codeIndex = urlString.indexOf('code=') + 5; // Find the index where 'code=' ends
+    //     const ampersandIndex = urlString.indexOf('&', codeIndex); // Find the index of the next '&' after 'code='
+    //     code = urlString.substring(codeIndex, ampersandIndex !== -1 ? ampersandIndex : urlString.length);
+    //   });
+    
+    //   var headers = {
+    //     'Content-Type': 'application/x-www-form-urlencoded',
+    //     'Authorization': 'Basic Z2FpYS50NjJzdGMzazg5OXcyYjRhM2s1OnNGWUVIZjQ3NDZGSjM4MzRoQlpkc2RrcWZoMjNrRWZIZA=='
+    //   };
+    //   // Define the API endpoint URL
+    //   var apiUrl = `https://heartcloud.com/oauth/token`;
+    
+    //   var accessToken;
+    //   // Make a GET request to the API
+    //   await axios.post(apiUrl, {
+    //     grant_type: 'authorization_code',
+    //     code: code
+    //   }, {headers: headers})
+    //     .then(response => {
+    //       accessToken = response.data.access_token;
+    //     })
+    //     .catch(error => {
+    //       console.error('Error fetching data from the API:', error);
+    //     });
+      
+    //     var headers = {
+    //       'Content-Type': 'application/json'
+    //     };
+        
+    //     var param = {
+    //       k: results1[0].h_key,
+    //       t: accessToken,
+    //       From: Date.now() / 1000 - 365 * 24 * 60 * 60,
+    //       To: Date.now() / 1000
+    //     };
+    //     // Define the API endpoint URL
+    //     var apiUrl = `https://api.heartcloud.com/api/v1/me/data/?access_token=${accessToken}`;
+      
+    //     // Make a GET request to the API
+    //     await axios.post(apiUrl, param, {headers: headers})
+    //       .then(response => {
+    //         console.log('Data API Response:', response.data);
+    //         data.push(response.data.Sessions);
+    //       })
+    //       .catch(error => {
+    //         console.error('Error fetching data from the API:', error);
+    //       });
+        
+    // }
   } catch (error) {
     // Handle errors here
-    console.error(error);
     res.status(500).json({ error: "An error occurred" });
   }
 });
@@ -533,7 +588,7 @@ app.post("/api/customer_new", authenticateToken, (req, res) => {
       } else {
         var cryptedPass = await bcrypt.hash(newData.password, 10)
         connection.query(
-          "INSERT INTO customer_list (firstname, lastname, address, city, state, zipcode, country, email, phone, sex, password, practitioner ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+          "INSERT INTO customer_list (firstname, lastname, address, city, state, zipcode, country, email, phone, sex, password, practitioner, h_key, h_id, h_password, h_email, apis ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
           [
             newData.firstname,
             newData.lastname,
@@ -546,7 +601,12 @@ app.post("/api/customer_new", authenticateToken, (req, res) => {
             newData.phone,
             newData.sex,
             cryptedPass,
-            userId
+            userId,
+            newData.h_key,
+            newData.h_id,
+            newData.h_password,
+            newData.h_email,
+            newData.apis
           ],
           (error, results, fields) => {
             if (error) throw error;
@@ -554,6 +614,7 @@ app.post("/api/customer_new", authenticateToken, (req, res) => {
             res.json(results.insertId);
           }
         );
+        
       }
     }
   );
@@ -590,7 +651,7 @@ app.post("/api/customer/update", async (req, res) => {
   // Update operation
   var cryptedPass = await bcrypt.hash(newData.password, 10)
   const updateQuery =
-    "UPDATE customer_list SET firstname =?, lastname =?, address =?, city =?, zipcode =?, state =?, phone =?, email =?, country = ?, sex =?, password =?  WHERE id =?";
+    "UPDATE customer_list SET firstname =?, lastname =?, address =?, city =?, zipcode =?, state =?, phone =?, email =?, country = ?, sex =?, password =?, h_key=?, h_id=?, h_email=?, h_password=?, h_token=?, h_token_expried=?, apis=? WHERE id =?";
   const updateValues = [
     newData.firstname,
     newData.lastname,
@@ -603,14 +664,146 @@ app.post("/api/customer/update", async (req, res) => {
     newData.country,
     newData.sex,
     cryptedPass,
+    newData.h_key,
+    newData.h_id,
+    newData.h_email,
+    newData.h_password,
+    newData.h_token,
+    newData.h_token_expried,
+    newData.apis,
     newData.id
   ]; // Replace with actual values
 
   connection.query(updateQuery, updateValues, (error, results, fields) => {
     if (error) throw error;
     console.log("Updated rows:", results.affectedRows);
-    res.json("success");
+    res.json(results.affectedRows);
   });
+});
+
+// Integrate API
+app.post("/api/integrate/heart", async (req, res) => {
+  try {
+    var newData = req.body;
+    var code = '';
+    const driver = new webdriver.Builder().forBrowser("chrome").build();
+    // Instantiate a web browser page
+    await driver.navigate().to("https://heartcloud.com/oauth/authorize?response_type=code&client_id=gaia.t62stc3k899w2b4a3k5&scope=profile%20settings%20activity&state=i9z4d4315fFtoiuK7wP2b3A3b8npZv")
+    .then(() => driver.findElement(webdriver.By.id('email')).sendKeys(newData.h_email))
+    .then(() => driver.findElement(webdriver.By.id('password')).sendKeys(newData.h_password))
+    .then(() => driver.findElement(webdriver.By.className('allow-button')).click())
+    .then(() => driver.getCurrentUrl())
+    .then((url) => {
+      const urlString = url;
+      const codeIndex = urlString.indexOf('code=') + 5; // Find the index where 'code=' ends
+      const ampersandIndex = urlString.indexOf('&', codeIndex); // Find the index of the next '&' after 'code='
+      code = urlString.substring(codeIndex, ampersandIndex !== -1 ? ampersandIndex : urlString.length);
+    });
+  
+    var headers = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': 'Basic Z2FpYS50NjJzdGMzazg5OXcyYjRhM2s1OnNGWUVIZjQ3NDZGSjM4MzRoQlpkc2RrcWZoMjNrRWZIZA=='
+    };
+    // Define the API endpoint URL
+    var apiUrl = `https://heartcloud.com/oauth/token`;
+  
+    var accessToken;
+    // Make a GET request to the API
+    await axios.post(apiUrl, {
+      grant_type: 'authorization_code',
+      code: code
+    }, {headers: headers})
+      .then(response => {
+        accessToken = response.data.access_token;
+        // Get the current date
+        const now = new Date();
+        // Calculate the date 20 days from now
+        const after20Days = new Date(now);
+        after20Days.setDate(now.getDate() + 20);
+        const updateQuery = "UPDATE customer_list SET h_token = ?, h_token_expried = ? WHERE id = ?";
+        const updateValues = [accessToken, after20Days, newData.id]; // Replace with actual values
+        connection.query(updateQuery, updateValues, (error, results, fields) => {
+          if (error) throw error;
+          console.log("Updated rows:", results.affectedRows);
+          res.json(accessToken);
+        });
+      })
+      .catch(error => {
+        res.json(`failed_${error.response.data.error_description}`);
+      });
+    // Send the response with the data
+  } catch (error) {
+    // Handle errors here
+    res.status(500).json({ error: "An error occurred" });
+  }
+});
+app.post("/api/api/heart", async (req, res) => {
+  var newData = req.body;
+  var headers = {
+    'Content-Type': 'application/json'
+  };
+  if(newData.type == 'latest') {
+      param = {
+          k: newData.key,
+          t: newData.token,
+          From: Math.floor(Date.now() / 1000 - 365 * 24 * 60 * 60),
+          To: Math.floor(Date.now() / 1000)
+      };
+      apiUrl = `https://api.heartcloud.com/api/v1/me/data?access_token=${newData.token}`;
+  } else if(newData.type == 'day') {
+    const currentDate = new Date(newData.day);
+    const year = currentDate.getFullYear();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0'); // Adding 1 to the month as it is zero-based
+    const day = String(currentDate.getDate()).padStart(2, '0');
+
+    const formattedDate = `${year}${month}${day}`;
+    param = {
+        k: newData.key,
+        t: newData.token,
+        d: formattedDate
+    };
+    apiUrl = `https://api.heartcloud.com/api/v1/me/day?access_token=${newData.token}`;
+  } else if(newData.type == 'month') {
+    param = {
+      k: newData.key,
+      t: newData.token,
+      From: Math.floor(Date.now() / 1000 - 30 * 24 * 60 * 60),
+      To: Math.floor(Date.now() / 1000)
+    };
+    apiUrl = `https://api.heartcloud.com/api/v1/me/data?access_token=${newData.token}`;
+  } else if(newData.type == 'custom') {
+    param = {
+      k: newData.key,
+      t: newData.token,
+      From: Math.floor(new Date(newData.startDate) / 1000),
+      To: Math.floor(new Date(newData.endDate) / 1000)
+    };
+    apiUrl = `https://api.heartcloud.com/api/v1/me/data?access_token=${newData.token}`;
+  } else if(newData.type == 'week') {
+    param = {
+      k: newData.key,
+      t: newData.token,
+      From: Math.floor(Date.now() / 1000 - 7 * 24 * 60 * 60),
+      To: Math.floor(Date.now() / 1000)
+    };
+    apiUrl = `https://api.heartcloud.com/api/v1/me/data?access_token=${newData.token}`;
+  }
+
+  // Make a GET request to the API
+  await axios.post(apiUrl, param, { headers: headers })
+      .then(response => {
+          console.log('Data API Response:', response.data);
+          res.json(response.data);
+      })
+      .catch(error => {
+          console.error('Error fetching data from the API:', error);
+          // res.json(error.response.data)
+          console.log(error.response.status);
+          if(error.response.status == 404) {
+            res.json(error.response.data);
+          }
+          // res.json(error.response.data);
+      });
 });
 
 const storage = multer.diskStorage({
