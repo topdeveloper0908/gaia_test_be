@@ -5,7 +5,7 @@ const express = require("express");
 const dotenv = require("dotenv").config();
 const multer = require("multer");
 const bodyParser = require("body-parser");
-const mysql = require("mysql");
+const mysql = require("mysql2");
 const path = require("path");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
@@ -18,6 +18,7 @@ const axios = require('axios')
 const connection = mysql.createConnection({
   host: "127.0.0.1",
   user: "root",
+  // password: "",
   password: "Practitioner@2024",
   database: "practitioner",
   port: '/var/run/mysqld/mysqld.sock',
