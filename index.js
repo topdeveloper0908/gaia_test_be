@@ -18,10 +18,10 @@ const axios = require('axios')
 const connection = mysql.createConnection({
   host: "127.0.0.1",
   user: "root",
-  password: "",
-  // password: "Practitioner@2024",
+  // password: "",
+  password: "Practitioner@2024",
   database: "practitioner",
-  // port: '/var/run/mysqld/mysqld.sock',
+  port: '/var/run/mysqld/mysqld.sock',
 });
 connection.connect((err) => {
   if (err) {
@@ -664,36 +664,66 @@ app.post("/api/customer/update", authenticateToken, async (req, res) => {
   var newData = req.body;
   
   // Update operation
-  var cryptedPass = await bcrypt.hash(newData.password, 10)
-  const updateQuery =
-    "UPDATE customer_list SET firstname =?, lastname =?, address =?, city =?, zipcode =?, state =?, phone =?, email =?, country = ?, sex =?, password =?, h_key=?, h_id=?, h_email=?, h_password=?, h_token=?, h_token_expried=?, apis=? WHERE id =?";
-  const updateValues = [
-    newData.firstname,
-    newData.lastname,
-    newData.address,
-    newData.city,
-    newData.zipcode,
-    newData.state,
-    newData.phone,
-    newData.email,
-    newData.country,
-    newData.sex,
-    cryptedPass,
-    newData.h_key,
-    newData.h_id,
-    newData.h_email,
-    newData.h_password,
-    newData.h_token,
-    newData.h_token_expried,
-    newData.apis,
-    newData.id
-  ]; // Replace with actual values
+  if(newData.password == '') {
+    const updateQuery =
+      "UPDATE customer_list SET firstname =?, lastname =?, address =?, city =?, zipcode =?, state =?, phone =?, email =?, country = ?, sex =?, h_key=?, h_id=?, h_email=?, h_password=?, h_token=?, h_token_expried=?, apis=? WHERE id =?";
+    const updateValues = [
+      newData.firstname,
+      newData.lastname,
+      newData.address,
+      newData.city,
+      newData.zipcode,
+      newData.state,
+      newData.phone,
+      newData.email,
+      newData.country,
+      newData.sex,
+      newData.h_key,
+      newData.h_id,
+      newData.h_email,
+      newData.h_password,
+      newData.h_token,
+      newData.h_token_expried,
+      newData.apis,
+      newData.id
+    ]; // Replace with actual values
+    connection.query(updateQuery, updateValues, (error, results, fields) => {
+      if (error) throw error;
+      console.log("Updated rows:", results.affectedRows);
+      res.json(results.affectedRows);
+    });
+  } else {
+    var cryptedPass = await bcrypt.hash(newData.password, 10)
+    const updateQuery =
+      "UPDATE customer_list SET firstname =?, lastname =?, address =?, city =?, zipcode =?, state =?, phone =?, email =?, country = ?, sex =?, password =?, h_key=?, h_id=?, h_email=?, h_password=?, h_token=?, h_token_expried=?, apis=? WHERE id =?";
+    const updateValues = [
+      newData.firstname,
+      newData.lastname,
+      newData.address,
+      newData.city,
+      newData.zipcode,
+      newData.state,
+      newData.phone,
+      newData.email,
+      newData.country,
+      newData.sex,
+      cryptedPass,
+      newData.h_key,
+      newData.h_id,
+      newData.h_email,
+      newData.h_password,
+      newData.h_token,
+      newData.h_token_expried,
+      newData.apis,
+      newData.id
+    ]; // Replace with actual values
+    connection.query(updateQuery, updateValues, (error, results, fields) => {
+      if (error) throw error;
+      console.log("Updated rows:", results.affectedRows);
+      res.json(results.affectedRows);
+    });
+  }
 
-  connection.query(updateQuery, updateValues, (error, results, fields) => {
-    if (error) throw error;
-    console.log("Updated rows:", results.affectedRows);
-    res.json(results.affectedRows);
-  });
 });
 
 // Integrate API
