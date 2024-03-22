@@ -12,16 +12,16 @@ const jwt = require("jsonwebtoken");
 const authenticateToken = require("./middleware/authenticateToken");
 var nodemailer = require("nodemailer");
 const app = express();
-const webdriver = require("selenium-webdriver");
+const { chromium } = require('playwright');
 const axios = require('axios')
 
 const connection = mysql.createConnection({
   host: "127.0.0.1",
   user: "root",
-  // password: "",
-  password: "Practitioner@2024",
+  password: "",
+  // password: "Practitioner@2024",
   database: "practitioner",
-  port: '/var/run/mysqld/mysqld.sock',
+  // port: '/var/run/mysqld/mysqld.sock',
 });
 connection.connect((err) => {
   if (err) {
@@ -110,7 +110,7 @@ app.get("/api/metaData", (req, res) => {
   );
   // Send the data as a JSON response
 });
-app.post("/api/new", (req, res) => {
+app.post("/api/new", authenticateToken, (req, res) => {
   var newData = req.body;
   connection.query(
     "Select * FROM practitioner_list WHERE email = ?",
@@ -153,7 +153,7 @@ app.post("/api/new", (req, res) => {
     }
   );
 });
-app.post("/api/admin_new", (req, res) => {
+app.post("/api/admin_new", authenticateToken, (req, res) => {
   var newData = req.body;
   connection.query(
     "Select * FROM practitioner_list WHERE email = ?",
@@ -199,7 +199,7 @@ app.post("/api/admin_new", (req, res) => {
     }
   );
 });
-app.post("/api/update", (req, res) => {
+app.post("/api/update", authenticateToken, (req, res) => {
   var newData = req.body;
   // Update operation
   const updateQuery =
@@ -235,7 +235,7 @@ app.post("/api/update", (req, res) => {
     res.json("success");
   });
 });
-app.post("/api/updateDB", async (req, res) => {
+app.post("/api/updateDB", authenticateToken, async (req, res) => {
   var newData = req.body;
   console.log(newData);
   if (newData.replace) {
@@ -312,7 +312,7 @@ app.post("/api/updateDB", async (req, res) => {
   //     res.json('success');
   // });
 });
-app.post("/api/user", (req, res) => {
+app.post("/api/user", authenticateToken, (req, res) => {
   var newData = req.body;
   // Update operation
   var newData = req.body;
@@ -325,7 +325,7 @@ app.post("/api/user", (req, res) => {
     }
   );
 });
-app.post("/api/remove", (req, res) => {
+app.post("/api/remove", authenticateToken, (req, res) => {
   var newData = req.body;
   // Update operation
   connection.query(
@@ -445,7 +445,7 @@ app.post("/api/hide_info", authenticateToken, (req, res) => {
 });
 
 // Customer
-app.post("/api/customer", async (req, res) => {
+app.post("/api/customer", authenticateToken, async (req, res) => {
   try {
     var newData = req.body;
 
@@ -537,7 +537,22 @@ app.post("/api/customer", async (req, res) => {
     res.status(500).json({ error: "An error occurred" });
   }
 });
-app.post("/api/customer/data/save", (req, res) => {
+app.post("/api/customer/bio", authenticateToken, (req, res) => {
+  var newData = req.body;
+  try {
+    connection.query(
+      "Select * FROM bio_data WHERE customer_id = ?",
+      [newData.id],
+      (error, results, fields) => {
+        if (error) throw error;
+        res.json(results);
+      }
+    );
+  } catch (error) {
+    res.status(500).json({ message: "Internal server error." });
+  }
+});
+app.post("/api/customer/bio/save", authenticateToken, (req, res) => {
   var newData = req.body;
   connection.query(
     "Select * FROM bio_data WHERE date = ? and customer_id = ?",
@@ -619,7 +634,7 @@ app.post("/api/customer_new", authenticateToken, (req, res) => {
     }
   );
 });
-app.post("/api/customer/remove", (req, res) => {
+app.post("/api/customer/remove", authenticateToken, (req, res) => {
   var newData = req.body;
   // Update operation
   connection.query(
@@ -645,7 +660,7 @@ app.get("/api/user/customers", authenticateToken, (req, res) => {
   });
   return;
 });
-app.post("/api/customer/update", async (req, res) => {
+app.post("/api/customer/update", authenticateToken, async (req, res) => {
   var newData = req.body;
   
   // Update operation
@@ -682,62 +697,82 @@ app.post("/api/customer/update", async (req, res) => {
 });
 
 // Integrate API
-app.post("/api/integrate/heart", async (req, res) => {
+app.post("/api/integrate/heart", authenticateToken, async (req, res) => {
   try {
     var newData = req.body;
     var code = '';
-    const driver = new webdriver.Builder().forBrowser("chrome").build();
-    // Instantiate a web browser page
-    await driver.navigate().to("https://heartcloud.com/oauth/authorize?response_type=code&client_id=gaia.t62stc3k899w2b4a3k5&scope=profile%20settings%20activity&state=i9z4d4315fFtoiuK7wP2b3A3b8npZv")
-    .then(() => driver.findElement(webdriver.By.id('email')).sendKeys(newData.h_email))
-    .then(() => driver.findElement(webdriver.By.id('password')).sendKeys(newData.h_password))
-    .then(() => driver.findElement(webdriver.By.className('allow-button')).click())
-    .then(() => driver.getCurrentUrl())
-    .then((url) => {
-      const urlString = url;
-      const codeIndex = urlString.indexOf('code=') + 5; // Find the index where 'code=' ends
-      const ampersandIndex = urlString.indexOf('&', codeIndex); // Find the index of the next '&' after 'code='
-      code = urlString.substring(codeIndex, ampersandIndex !== -1 ? ampersandIndex : urlString.length);
-    });
-  
-    var headers = {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': 'Basic Z2FpYS50NjJzdGMzazg5OXcyYjRhM2s1OnNGWUVIZjQ3NDZGSjM4MzRoQlpkc2RrcWZoMjNrRWZIZA=='
-    };
-    // Define the API endpoint URL
-    var apiUrl = `https://heartcloud.com/oauth/token`;
-  
-    var accessToken;
-    // Make a GET request to the API
-    await axios.post(apiUrl, {
-      grant_type: 'authorization_code',
-      code: code
-    }, {headers: headers})
-      .then(response => {
-        accessToken = response.data.access_token;
-        // Get the current date
-        const now = new Date();
-        // Calculate the date 20 days from now
-        const after20Days = new Date(now);
-        after20Days.setDate(now.getDate() + 20);
-        const updateQuery = "UPDATE customer_list SET h_token = ?, h_token_expried = ? WHERE id = ?";
-        const updateValues = [accessToken, after20Days, newData.id]; // Replace with actual values
-        connection.query(updateQuery, updateValues, (error, results, fields) => {
-          if (error) throw error;
-          console.log("Updated rows:", results.affectedRows);
-          res.json(accessToken);
+    
+    // const driver = new webdriver.Builder().forBrowser("chrome").build();
+    // // Instantiate a web browser page
+    // await driver.navigate().to("https://heartcloud.com/oauth/authorize?response_type=code&client_id=gaia.t62stc3k899w2b4a3k5&scope=profile%20settings%20activity&state=i9z4d4315fFtoiuK7wP2b3A3b8npZv")
+    // .then(() => driver.findElement(webdriver.By.id('email')).sendKeys(newData.h_email))
+    // .then(() => driver.findElement(webdriver.By.id('password')).sendKeys(newData.h_password))
+    // .then(() => driver.findElement(webdriver.By.className('allow-button')).click())
+    // .then(() => driver.getCurrentUrl())
+    // .then((url) => {
+    //   const urlString = url;
+    //   const codeIndex = urlString.indexOf('code=') + 5; // Find the index where 'code=' ends
+    //   const ampersandIndex = urlString.indexOf('&', codeIndex); // Find the index of the next '&' after 'code='
+    //   code = urlString.substring(codeIndex, ampersandIndex !== -1 ? ampersandIndex : urlString.length);
+    // });
+    (async () => {
+      const browser = await chromium.launch();
+      const page = await browser.newPage();
+    
+      await page.goto('https://heartcloud.com/oauth/authorize?response_type=code&client_id=gaia.t62stc3k899w2b4a3k5&scope=profile%20settings%20activity&state=i9z4d4315fFtoiuK7wP2b3A3b8npZv');
+      await page.fill('#email', newData.h_email);
+      await page.fill('#password', newData.h_password);
+      await page.click('.allow-button');
+    
+      const url = page.url();
+      const codeIndex = url.indexOf('code=') + 5;
+      const ampersandIndex = url.indexOf('&', codeIndex);
+      code = url.substring(codeIndex, ampersandIndex !== -1 ? ampersandIndex : url.length);
+    
+      console.log(code); // You can use the 'code' variable as needed
+    
+      await browser.close();
+
+      var headers = {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': 'Basic Z2FpYS50NjJzdGMzazg5OXcyYjRhM2s1OnNGWUVIZjQ3NDZGSjM4MzRoQlpkc2RrcWZoMjNrRWZIZA=='
+      };
+      // Define the API endpoint URL
+      var apiUrl = `https://heartcloud.com/oauth/token`;
+    
+      var accessToken;
+      // Make a GET request to the API
+      await axios.post(apiUrl, {
+        grant_type: 'authorization_code',
+        code: code
+      }, {headers: headers})
+        .then(response => {
+          accessToken = response.data.access_token;
+          // Get the current date
+          const now = new Date();
+          // Calculate the date 20 days from now
+          const after20Days = new Date(now);
+          after20Days.setDate(now.getDate() + 20);
+          const updateQuery = "UPDATE customer_list SET h_token = ?, h_token_expried = ? WHERE id = ?";
+          const updateValues = [accessToken, after20Days, newData.id]; // Replace with actual values
+          connection.query(updateQuery, updateValues, (error, results, fields) => {
+            if (error) throw error;
+            console.log("Updated rows:", results.affectedRows);
+            res.json(accessToken);
+          });
+        })
+        .catch(error => {
+          res.json(`failed_${error.response.data.error_description}`);
         });
-      })
-      .catch(error => {
-        res.json(`failed_${error.response.data.error_description}`);
-      });
+    })();
     // Send the response with the data
   } catch (error) {
     // Handle errors here
+    console.log(error)
     res.status(500).json({ error: "An error occurred" });
   }
 });
-app.post("/api/api/heart", async (req, res) => {
+app.post("/api/api/heart", authenticateToken, async (req, res) => {
   var newData = req.body;
   var headers = {
     'Content-Type': 'application/json'
